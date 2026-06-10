@@ -35,7 +35,7 @@
     <div class="card hero-side">
       <div class="section-title">Insight nhanh</div>
       <div id="heroInsights" class="insight-list" style="margin-top:12px"></div>
-      <div class="note-box" style="margin-top:12px"><b>Điểm mới:</b> heatmap thu nhỏ để nhìn nhanh theo nhóm quản trị; bảng ma trận bên phải hiển thị rõ các chỉ số chính; bảng dữ liệu phía dưới mở rộng đầy đủ tất cả trường từ Excel.</div>
+      <div class="note-box" style="margin-top:12px"><b>Link chi tiết:</b> <a id="detailLink" href="#" target="_blank" rel="noopener">Cập nhật đường link tại đây</a></div>
     </div>
   </section>
 
@@ -202,7 +202,22 @@ function exportCSV(rows){const cols=fullTableColumns; const esc=v=>'"'+String(v?
 function normalizeAndBuildPayload(rows, sourceName){const cols=Object.keys(rows[0]||{}).map(x=>String(x).trim()); const issueStart=cols.indexOf('Không chụp ảnh'); const issueEnd=cols.indexOf('Các vật phẩm không trong quy chuẩn (Trước, Trong quầy & khu vực sảnh chung PGD) - 5S'); const issueColumns=cols.slice(issueStart, issueEnd+1); const numericColumns=new Set(issueColumns.concat(['Số lỗi của PGD','Điểm của PGD','Số lỗi 5S ','Điểm 5S'])); const cleaned=rows.map(row=>{const rec={}; Object.keys(row).forEach(k=>{rec[String(k).trim()]=row[k];}); Object.keys(rec).forEach(k=>{if(typeof rec[k]==='string') rec[k]=rec[k].replace(/\u00a0/g,' ').replace(/\s+/g,' ').trim();}); numericColumns.forEach(k=>{rec[k]=Number(rec[k]||0);}); const dt=excelDateToObj(rec['Ngày chấm']); rec['Ngày chấm']=dt.display; rec['NgayChamSort']=dt.sort; const recognitionIssues=issueColumns.slice(0,-1).filter(k=>Number(rec[k]||0)>0).map(k=>({name:k,value:Number(rec[k]||0)})); const fiveSIssues=issueColumns.slice(-1).filter(k=>Number(rec[k]||0)>0).map(k=>({name:k,value:Number(rec[k]||0)})); const parts=[]; if(recognitionIssues.length) parts.push('Nhận diện: '+recognitionIssues.map(x=>`${x.name} (${x.value})`).join('; ')); if(fiveSIssues.length) parts.push('5S: '+fiveSIssues.map(x=>`${x.name} (${x.value})`).join('; ')); rec.recognitionIssues=recognitionIssues; rec.fiveSIssues=fiveSIssues; rec.allIssuesText=parts.length?parts.join(' | '):'Không có lỗi'; rec.score10Recognition=Number(rec['Điểm của PGD']||0)*10; rec.score10FiveS=Number(rec['Điểm 5S']||0)*10; rec.compositeScore10=(rec.score10Recognition+rec.score10FiveS)/2; return rec;}); return {generated_from:sourceName, rows:cleaned.length, score_scale:10, filterFields:['Ngày chấm','MIỀN','PHÂN VÙNG','QLV','QLKV','TỈNH','F88/CIMB','Kết quả tuân thủ nhận diện tại PGD','Kết quả tuân thủ 5S tại PGD'], groupOptions:['MIỀN','PHÂN VÙNG','QLV','QLKV','TỈNH'], issueColumns, fullColumns:fullTableColumns, records:cleaned}; }
 function refresh(){populateFilters(); const filtered=applyFilters(); renderHero(filtered); renderKPIs(filtered); plotPie('recognitionPie','Kết quả tuân thủ nhận diện tại PGD',filtered,['#16a34a','#f59e0b','#dc2626']); plotPie('fiveSPie','Kết quả tuân thủ 5S tại PGD',filtered,['#16a34a','#f59e0b','#dc2626']); renderDateTrend(filtered); renderIssueBar(filtered); renderEfficiency(filtered); renderGroup(filtered); const rows=renderFullTable(filtered); q('exportBtn').onclick=()=>exportCSV(rows)}
 function init(){createFilters(); renderFullTableHead(); q('rankGroupBy').innerHTML=payload.groupOptions.map(g=>`<option value="${g}">${g}</option>`).join(''); q('matrixGroupBy').innerHTML=payload.groupOptions.map(g=>`<option value="${g}">${g}</option>`).join(''); q('rankGroupBy').value=state.rankGroup; q('matrixGroupBy').value=state.matrixGroup; q('rankGroupBy').onchange=e=>{state.rankGroup=e.target.value; refresh()}; q('matrixGroupBy').onchange=e=>{state.matrixGroup=e.target.value; refresh()}; q('matrixLimit').onchange=refresh; q('rankLimit').onchange=refresh; q('keywordInput').oninput=e=>{state.keyword=e.target.value; state.page=1; refresh()}; q('tableSearch').oninput=e=>{state.tableSearch=e.target.value; state.page=1; refresh()}; q('pageSize').onchange=e=>{state.pageSize=Number(e.target.value); state.page=1; refresh()}; q('resetBtn').onclick=()=>{resetFilterState(); q('keywordInput').value=''; q('tableSearch').value=''; refresh()}; q('reloadDefaultBtn').onclick=()=>{payload=JSON.parse(JSON.stringify(defaultPayload)); rawData=payload.records||[]; resetFilterState(); q('keywordInput').value=''; q('tableSearch').value=''; createFilters(); renderFullTableHead(); refresh();}; q('fileInput').onchange=async e=>{const file=e.target.files[0]; if(!file) return; const buf=await file.arrayBuffer(); const wb=XLSX.read(buf,{type:'array'}); const sheet=wb.Sheets[wb.SheetNames[0]]; const rows=XLSX.utils.sheet_to_json(sheet,{defval:''}); payload=normalizeAndBuildPayload(rows,file.name); rawData=payload.records||[]; resetFilterState(); q('keywordInput').value=''; q('tableSearch').value=''; createFilters(); renderFullTableHead(); refresh();}; q('prevBtn').onclick=()=>{if(state.page>1){state.page--; refresh()}}; q('nextBtn').onclick=()=>{state.page++; refresh()}; refresh()}
-init();
+async function loadRemoteData(){
+  try{
+    const res=await fetch('data.xlsx',{cache:'no-store'});
+    if(!res.ok) return false;
+    const buf=await res.arrayBuffer();
+    const wb=XLSX.read(buf,{type:'array'});
+    const sheet=wb.Sheets[wb.SheetNames[0]];
+    const rows=XLSX.utils.sheet_to_json(sheet,{defval:''});
+    if(!rows.length) return false;
+    payload=normalizeAndBuildPayload(rows,'data.xlsx (nguồn trên hệ thống)');
+    rawData=payload.records||[];
+    resetFilterState();
+    return true;
+  }catch(e){console.warn('Không nạp được data.xlsx, dùng dữ liệu mặc định:',e); return false;}
+}
+loadRemoteData().then(()=>init());
 </script>
 </body>
 </html>
