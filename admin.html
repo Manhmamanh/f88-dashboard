@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quản trị · Dashboard F88</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+:root{--green:#00844A;--line:#e5eaf1;--muted:#64748b;--bg:#f4f7fb;}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:#122033;line-height:1.5}
+.wrap{max-width:780px;margin:0 auto;padding:24px 18px 60px}
+.brand{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.brand img{height:34px}
+.brand .tag{font-size:13px;font-weight:700;color:var(--green);border-left:2px solid var(--green);padding-left:9px;line-height:1.25}
+h1{font-size:24px;margin:10px 0 4px}
+.sub{color:var(--muted);font-size:14px;margin-bottom:20px}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:20px;margin-bottom:18px;box-shadow:0 1px 2px rgba(16,32,51,.04)}
+.card h2{font-size:16px;margin:0 0 4px}
+.card .desc{color:var(--muted);font-size:13px;margin:0 0 16px}
+label{display:block;font-size:13px;font-weight:600;margin:12px 0 5px}
+input[type=text],input[type=password],input[type=url]{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-size:14px;font-family:inherit}
+input:focus{outline:none;border-color:var(--green)}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:10px 16px;border-radius:10px;border:none;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
+.btn-primary{background:var(--green);color:#fff}
+.btn-primary:hover{background:#016d3e}
+.btn-secondary{background:#eef2f7;color:#334155}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:14px}
+.msg{margin-top:12px;padding:10px 13px;border-radius:10px;font-size:13.5px;display:none}
+.msg.show{display:block}
+.msg.ok{background:#ecfdf5;color:#15803d;border:1px solid #bbf7d0}
+.msg.err{background:#fef2f2;color:#b91c1c;border:1px solid #fecaca}
+.msg.info{background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe}
+.pill{display:inline-block;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:700}
+.pill.on{background:#ecfdf5;color:#15803d}
+.pill.off{background:#fef2f2;color:#b91c1c}
+.filebox{border:2px dashed #cbd5e1;border-radius:12px;padding:18px;text-align:center;color:var(--muted);font-size:13.5px;cursor:pointer;background:#fafcff}
+.filebox:hover{border-color:var(--green)}
+.preview{margin-top:12px;font-size:13px;background:#f8fafc;border:1px solid var(--line);border-radius:10px;padding:12px;display:none}
+.preview.show{display:block}
+.preview b{color:#0f172a}
+.help{font-size:12.5px;color:var(--muted);margin-top:8px;line-height:1.55}
+.help a{color:var(--green)}
+code{background:#f1f5f9;padding:1px 5px;border-radius:5px;font-size:12px}
+.disabled-overlay{opacity:.45;pointer-events:none}
+hr{border:none;border-top:1px solid var(--line);margin:18px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">
+    <img src="logo-f88.svg" alt="F88">
+    <span class="tag">Tài chính<br>bình dân</span>
+  </div>
+  <h1>Trang quản trị Dashboard</h1>
+  <p class="sub">Cập nhật dữ liệu, link và tiêu đề — bấm Lưu là tự đăng lên hệ thống, dashboard cập nhật sau ~1 phút. · <a href="index.html" target="_blank">Mở dashboard ↗</a></p>
+
+  <!-- TOKEN -->
+  <div class="card">
+    <h2>1. Kết nối GitHub <span id="tokenPill" class="pill off">chưa kết nối</span></h2>
+    <p class="desc">Dán mã Token GitHub để có quyền cập nhật. Chỉ cần nhập 1 lần, trình duyệt sẽ nhớ.</p>
+    <label for="token">GitHub Token</label>
+    <input type="password" id="token" placeholder="ghp_..." autocomplete="off">
+    <div class="row">
+      <button class="btn btn-primary" id="connectBtn">Kết nối</button>
+      <button class="btn btn-secondary" id="forgetBtn">Xoá token khỏi máy</button>
+    </div>
+    <div class="msg" id="tokenMsg"></div>
+    <div class="help">
+      Chưa có token? Tạo tại
+      <a href="https://github.com/settings/tokens/new?scopes=repo&description=F88%20Dashboard%20Admin" target="_blank">github.com/settings/tokens</a>
+      → tick quyền <code>repo</code> → Generate token → copy dán vào đây.
+      Token là chìa khoá riêng của bạn, đừng chia sẻ cho người khác.
+    </div>
+  </div>
+
+  <!-- DATA -->
+  <div class="card" id="dataCard">
+    <h2>2. Cập nhật dữ liệu (Excel)</h2>
+    <p class="desc">Tải file Excel mới (cấu trúc cột giống file gốc). Hệ thống sẽ thay toàn bộ dữ liệu dashboard.</p>
+    <div class="filebox" id="filebox">📊 Bấm để chọn file Excel (.xlsx) hoặc kéo thả vào đây
+      <input type="file" id="excel" accept=".xlsx,.xls" hidden>
+    </div>
+    <div class="preview" id="excelPreview"></div>
+    <div class="row">
+      <button class="btn btn-primary" id="publishData" disabled>Đăng dữ liệu lên hệ thống</button>
+    </div>
+    <div class="msg" id="dataMsg"></div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="card" id="settingsCard">
+    <h2>3. Tiêu đề &amp; Link chi tiết</h2>
+    <p class="desc">Chỉnh tiêu đề trên đầu dashboard và link "Xem dữ liệu chi tiết".</p>
+    <label for="title">Tiêu đề dashboard</label>
+    <input type="text" id="title" placeholder="Dashboard nhận diện PGD F88">
+    <label for="linkText">Chữ hiển thị của link</label>
+    <input type="text" id="linkText" placeholder="Xem dữ liệu chi tiết (SharePoint)">
+    <label for="linkUrl">Địa chỉ link (URL)</label>
+    <input type="url" id="linkUrl" placeholder="https://...">
+    <div class="row">
+      <button class="btn btn-primary" id="saveSettings" disabled>Lưu tiêu đề &amp; link</button>
+    </div>
+    <div class="msg" id="settingsMsg"></div>
+  </div>
+</div>
+
+<script>
+const OWNER='Manhmamanh', REPO='f88-dashboard', BRANCH='main';
+const API=`https://api.github.com/repos/${OWNER}/${REPO}/contents/`;
+const $=id=>document.getElementById(id);
+let pendingData=null; // {base64, name, rows}
+
+function getToken(){ return localStorage.getItem('f88_gh_token')||''; }
+function ghHeaders(){ return {'Authorization':'token '+getToken(),'Accept':'application/vnd.github+json'}; }
+function showMsg(el,type,text){ el.className='msg show '+type; el.textContent=text; }
+function hideMsg(el){ el.className='msg'; }
+function utf8ToB64(s){ return btoa(unescape(encodeURIComponent(s))); }
+function b64ToUtf8(s){ return decodeURIComponent(escape(atob(s))); }
+function bytesToB64(bytes){ let bin=''; const c=0x8000; for(let i=0;i<bytes.length;i+=c){ bin+=String.fromCharCode.apply(null,bytes.subarray(i,i+c)); } return btoa(bin); }
+
+async function ghGet(path){
+  const r=await fetch(API+path+'?ref='+BRANCH+'&t='+Date.now(),{headers:ghHeaders()});
+  if(r.status===404) return null;
+  if(!r.ok) throw new Error('Lỗi đọc '+path+' ('+r.status+')');
+  return r.json();
+}
+async function ghPut(path,b64,message){
+  const existing=await ghGet(path);
+  const body={message,content:b64,branch:BRANCH};
+  if(existing&&existing.sha) body.sha=existing.sha;
+  const r=await fetch(API+path,{method:'PUT',headers:{...ghHeaders(),'Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(!r.ok){ const t=await r.text(); throw new Error('Lỗi lưu '+path+' ('+r.status+'): '+t.slice(0,160)); }
+  return r.json();
+}
+
+function setConnected(on,who){
+  $('tokenPill').className='pill '+(on?'on':'off');
+  $('tokenPill').textContent=on?('đã kết nối'+(who?': '+who:'')):'chưa kết nối';
+  $('publishData').disabled=!on||!pendingData;
+  $('saveSettings').disabled=!on;
+  $('dataCard').classList.toggle('disabled-overlay',!on);
+  $('settingsCard').classList.toggle('disabled-overlay',!on);
+}
+
+async function connect(){
+  const t=$('token').value.trim()||getToken();
+  if(!t){ showMsg($('tokenMsg'),'err','Bạn chưa nhập token.'); return; }
+  showMsg($('tokenMsg'),'info','Đang kiểm tra token...');
+  try{
+    const r=await fetch('https://api.github.com/user',{headers:{'Authorization':'token '+t,'Accept':'application/vnd.github+json'}});
+    if(!r.ok) throw new Error('Token không hợp lệ ('+r.status+')');
+    const u=await r.json();
+    localStorage.setItem('f88_gh_token',t);
+    $('token').value='';
+    // kiểm tra quyền ghi vào repo
+    const repoR=await fetch(`https://api.github.com/repos/${OWNER}/${REPO}`,{headers:{'Authorization':'token '+t,'Accept':'application/vnd.github+json'}});
+    const repo=await repoR.json();
+    if(!repo.permissions||!repo.permissions.push){ showMsg($('tokenMsg'),'err','Token đúng nhưng không có quyền ghi vào repo. Hãy tạo token có quyền "repo".'); setConnected(false); return; }
+    setConnected(true,u.login);
+    showMsg($('tokenMsg'),'ok','Đã kết nối với tài khoản '+u.login+'. Bạn có thể cập nhật bên dưới.');
+    loadSettings();
+  }catch(e){ showMsg($('tokenMsg'),'err',e.message); setConnected(false); }
+}
+
+function forget(){
+  localStorage.removeItem('f88_gh_token');
+  setConnected(false);
+  showMsg($('tokenMsg'),'info','Đã xoá token khỏi trình duyệt này.');
+}
+
+async function loadSettings(){
+  try{
+    const f=await ghGet('config.json');
+    if(f){ const cfg=JSON.parse(b64ToUtf8(f.content)); $('title').value=cfg.title||''; $('linkText').value=cfg.detailLinkText||''; $('linkUrl').value=cfg.detailLinkUrl||''; }
+  }catch(e){ /* để trống nếu chưa có */ }
+}
+
+async function saveSettings(){
+  const cfg={ title:$('title').value.trim(), detailLinkText:$('linkText').value.trim(), detailLinkUrl:$('linkUrl').value.trim() };
+  if(!cfg.title){ showMsg($('settingsMsg'),'err','Tiêu đề không được để trống.'); return; }
+  $('saveSettings').disabled=true;
+  showMsg($('settingsMsg'),'info','Đang lưu...');
+  try{
+    await ghPut('config.json',utf8ToB64(JSON.stringify(cfg,null,2)+'\n'),'Cập nhật tiêu đề & link qua trang admin');
+    showMsg($('settingsMsg'),'ok','Đã lưu! Dashboard sẽ cập nhật sau khoảng 1 phút.');
+  }catch(e){ showMsg($('settingsMsg'),'err',e.message); }
+  $('saveSettings').disabled=false;
+}
+
+async function onExcel(file){
+  if(!file) return;
+  hideMsg($('dataMsg'));
+  const pv=$('excelPreview');
+  pv.className='preview show'; pv.innerHTML='Đang đọc file...';
+  try{
+    const buf=await file.arrayBuffer();
+    const wb=XLSX.read(buf,{type:'array'});
+    const sheet=wb.Sheets[wb.SheetNames[0]];
+    const rows=XLSX.utils.sheet_to_json(sheet,{defval:''});
+    if(!rows.length) throw new Error('File không có dòng dữ liệu nào.');
+    const cols=Object.keys(rows[0]).map(c=>String(c).trim());
+    const hasPGD=cols.some(c=>c.toUpperCase()==='PGD');
+    pendingData={base64:bytesToB64(new Uint8Array(buf)),name:file.name,rows:rows.length};
+    pv.innerHTML=`📄 <b>${file.name}</b><br>Số dòng dữ liệu: <b>${rows.length}</b> · Số cột: <b>${cols.length}</b>`
+      + (hasPGD?'':'<br><span style="color:#b91c1c">⚠ Không thấy cột "PGD" — kiểm tra lại đúng file không.</span>');
+    $('publishData').disabled=!getToken();
+  }catch(e){ pendingData=null; $('publishData').disabled=true; pv.className='preview show'; pv.innerHTML='<span style="color:#b91c1c">Không đọc được file: '+e.message+'</span>'; }
+}
+
+async function publishData(){
+  if(!pendingData){ return; }
+  $('publishData').disabled=true;
+  showMsg($('dataMsg'),'info','Đang đăng dữ liệu lên hệ thống...');
+  try{
+    await ghPut('data.xlsx',pendingData.base64,'Cập nhật dữ liệu ('+pendingData.rows+' dòng) qua trang admin');
+    showMsg($('dataMsg'),'ok','Đã đăng '+pendingData.rows+' dòng dữ liệu! Dashboard sẽ cập nhật sau khoảng 1 phút.');
+  }catch(e){ showMsg($('dataMsg'),'err',e.message); }
+  $('publishData').disabled=false;
+}
+
+// wiring
+$('connectBtn').onclick=connect;
+$('forgetBtn').onclick=forget;
+$('saveSettings').onclick=saveSettings;
+$('publishData').onclick=publishData;
+$('filebox').onclick=()=>$('excel').click();
+$('excel').onchange=e=>onExcel(e.target.files[0]);
+$('filebox').ondragover=e=>{e.preventDefault();$('filebox').style.borderColor='#00844A';};
+$('filebox').ondragleave=()=>{$('filebox').style.borderColor='';};
+$('filebox').ondrop=e=>{e.preventDefault();$('filebox').style.borderColor='';onExcel(e.dataTransfer.files[0]);};
+
+// auto-connect nếu đã lưu token
+if(getToken()){ connect(); } else { setConnected(false); }
+</script>
+</body>
+</html>

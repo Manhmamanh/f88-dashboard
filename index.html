@@ -33,13 +33,8 @@
         <img src="logo-f88.svg" alt="F88" style="height:36px">
         <span style="font-size:14px;font-weight:700;color:#00844A;border-left:2px solid #00844A;padding-left:10px;line-height:1.3">Tài chính<br>bình dân</span>
       </div>
-      <h1>Dashboard nhận diện PGD F88</h1>
-      <div class="controls" style="margin-top:16px">
-        <label class="btn btn-primary">+ Nạp nguồn Excel<input type="file" id="fileInput" accept=".xlsx,.xls" hidden></label>
-        <button class="btn btn-secondary" id="reloadDefaultBtn">Quay về dữ liệu mặc định</button>
-        <button class="btn btn-secondary" id="exportBtn">Xuất CSV bộ lọc</button>
-      </div>
-      <div class="meta" id="heroMeta"></div>
+      <h1 id="dashTitle">Dashboard nhận diện PGD F88</h1>
+      <div class="meta" id="heroMeta" style="margin-top:16px"></div>
     </div>
     <div class="card hero-side">
       <div class="section-title">Insight nhanh</div>
@@ -216,8 +211,8 @@ function renderFullTable(filtered){const rows=getFilteredFullRows(filtered); con
 function exportCSV(rows){const cols=fullTableColumns; const esc=v=>'"'+String(v??'').replaceAll('"','""')+'"'; const csv=[cols.map(esc).join(',')].concat(rows.map(r=>cols.map(c=>esc(r[c])).join(','))).join('\n'); const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='f88-dashboard-thang4-v6.csv'; a.click(); URL.revokeObjectURL(url)}
 function normalizeAndBuildPayload(rows, sourceName){const cols=Object.keys(rows[0]||{}).map(x=>String(x).trim()); const issueStart=cols.indexOf('Không chụp ảnh'); const issueEnd=cols.indexOf('Các vật phẩm không trong quy chuẩn (Trước, Trong quầy & khu vực sảnh chung PGD) - 5S'); const issueColumns=cols.slice(issueStart, issueEnd+1); const numericColumns=new Set(issueColumns.concat(['Số lỗi của PGD','Điểm của PGD','Số lỗi 5S ','Điểm 5S'])); const cleaned=rows.map(row=>{const rec={}; Object.keys(row).forEach(k=>{rec[String(k).trim()]=row[k];}); Object.keys(rec).forEach(k=>{if(typeof rec[k]==='string') rec[k]=rec[k].replace(/\u00a0/g,' ').replace(/\s+/g,' ').trim();}); numericColumns.forEach(k=>{rec[k]=Number(rec[k]||0);}); const dt=excelDateToObj(rec['Ngày chấm']); rec['Ngày chấm']=dt.display; rec['NgayChamSort']=dt.sort; const recognitionIssues=issueColumns.slice(0,-1).filter(k=>Number(rec[k]||0)>0).map(k=>({name:k,value:Number(rec[k]||0)})); const fiveSIssues=issueColumns.slice(-1).filter(k=>Number(rec[k]||0)>0).map(k=>({name:k,value:Number(rec[k]||0)})); const parts=[]; if(recognitionIssues.length) parts.push('Nhận diện: '+recognitionIssues.map(x=>`${x.name} (${x.value})`).join('; ')); if(fiveSIssues.length) parts.push('5S: '+fiveSIssues.map(x=>`${x.name} (${x.value})`).join('; ')); rec.recognitionIssues=recognitionIssues; rec.fiveSIssues=fiveSIssues; rec.allIssuesText=parts.length?parts.join(' | '):'Không có lỗi'; rec.score10Recognition=Number(rec['Điểm của PGD']||0)*10; rec.score10FiveS=Number(rec['Điểm 5S']||0)*10; rec.compositeScore10=(rec.score10Recognition+rec.score10FiveS)/2; return rec;}); return {generated_from:sourceName, rows:cleaned.length, score_scale:10, filterFields:['Ngày chấm','MIỀN','PHÂN VÙNG','QLV','QLKV','TỈNH','F88/CIMB','Kết quả tuân thủ nhận diện tại PGD','Kết quả tuân thủ 5S tại PGD'], groupOptions:['MIỀN','PHÂN VÙNG','QLV','QLKV','TỈNH'], issueColumns, fullColumns:fullTableColumns, records:cleaned}; }
 function renderTopErrors(filtered){const map=new Map(); const ic=payload.issueColumns||[]; filtered.forEach(r=>{const key=r['PGD']||'—'; const cur=map.get(key)||{name:key, tinh:r['TỈNH']||'', err:0, times:0}; cur.err+=ic.reduce((s,c)=>s+(Number(r[c])||0),0); cur.times++; map.set(key,cur);}); const top=[...map.values()].sort((a,b)=>b.err-a.err).slice(0,20); q('topErrorGrid').innerHTML=top.map((x,i)=>`<div class="top-error-card"><span class="rank">#${i+1}</span><span class="name" title="${String(x.name).replaceAll('"','&quot;')}">${x.name}</span><span class="err">${fmt(x.err)} lỗi</span><span class="sub">${x.tinh}${x.tinh?' · ':''}${x.times} lần chấm</span></div>`).join('');}
-function refresh(){populateFilters(); const filtered=applyFilters(); renderHero(filtered); renderKPIs(filtered); plotPie('recognitionPie','Kết quả tuân thủ nhận diện tại PGD',filtered,['#16a34a','#f59e0b','#dc2626']); plotPie('fiveSPie','Kết quả tuân thủ 5S tại PGD',filtered,['#16a34a','#f59e0b','#dc2626']); renderDateTrend(filtered); renderIssueBar(filtered); renderTopErrors(filtered); renderEfficiency(filtered); renderGroup(filtered); const rows=renderFullTable(filtered); q('exportBtn').onclick=()=>exportCSV(rows)}
-function init(){createFilters(); renderFullTableHead(); q('rankGroupBy').innerHTML=payload.groupOptions.map(g=>`<option value="${g}">${g}</option>`).join(''); q('matrixGroupBy').innerHTML=payload.groupOptions.map(g=>`<option value="${g}">${g}</option>`).join(''); q('rankGroupBy').value=state.rankGroup; q('matrixGroupBy').value=state.matrixGroup; q('rankGroupBy').onchange=e=>{state.rankGroup=e.target.value; refresh()}; q('matrixGroupBy').onchange=e=>{state.matrixGroup=e.target.value; refresh()}; q('matrixLimit').onchange=refresh; q('rankLimit').onchange=refresh; q('keywordInput').oninput=e=>{state.keyword=e.target.value; state.page=1; refresh()}; q('tableSearch').oninput=e=>{state.tableSearch=e.target.value; state.page=1; refresh()}; q('pageSize').onchange=e=>{state.pageSize=Number(e.target.value); state.page=1; refresh()}; q('resetBtn').onclick=()=>{resetFilterState(); q('keywordInput').value=''; q('tableSearch').value=''; refresh()}; q('reloadDefaultBtn').onclick=()=>{payload=JSON.parse(JSON.stringify(defaultPayload)); rawData=payload.records||[]; resetFilterState(); q('keywordInput').value=''; q('tableSearch').value=''; createFilters(); renderFullTableHead(); refresh();}; q('fileInput').onchange=async e=>{const file=e.target.files[0]; if(!file) return; const buf=await file.arrayBuffer(); const wb=XLSX.read(buf,{type:'array'}); const sheet=wb.Sheets[wb.SheetNames[0]]; const rows=XLSX.utils.sheet_to_json(sheet,{defval:''}); payload=normalizeAndBuildPayload(rows,file.name); rawData=payload.records||[]; resetFilterState(); q('keywordInput').value=''; q('tableSearch').value=''; createFilters(); renderFullTableHead(); refresh();}; q('prevBtn').onclick=()=>{if(state.page>1){state.page--; refresh()}}; q('nextBtn').onclick=()=>{state.page++; refresh()}; refresh()}
+function refresh(){populateFilters(); const filtered=applyFilters(); renderHero(filtered); renderKPIs(filtered); plotPie('recognitionPie','Kết quả tuân thủ nhận diện tại PGD',filtered,['#16a34a','#f59e0b','#dc2626']); plotPie('fiveSPie','Kết quả tuân thủ 5S tại PGD',filtered,['#16a34a','#f59e0b','#dc2626']); renderDateTrend(filtered); renderIssueBar(filtered); renderTopErrors(filtered); renderEfficiency(filtered); renderGroup(filtered); renderFullTable(filtered);}
+function init(){createFilters(); renderFullTableHead(); q('rankGroupBy').innerHTML=payload.groupOptions.map(g=>`<option value="${g}">${g}</option>`).join(''); q('matrixGroupBy').innerHTML=payload.groupOptions.map(g=>`<option value="${g}">${g}</option>`).join(''); q('rankGroupBy').value=state.rankGroup; q('matrixGroupBy').value=state.matrixGroup; q('rankGroupBy').onchange=e=>{state.rankGroup=e.target.value; refresh()}; q('matrixGroupBy').onchange=e=>{state.matrixGroup=e.target.value; refresh()}; q('matrixLimit').onchange=refresh; q('rankLimit').onchange=refresh; q('keywordInput').oninput=e=>{state.keyword=e.target.value; state.page=1; refresh()}; q('tableSearch').oninput=e=>{state.tableSearch=e.target.value; state.page=1; refresh()}; q('pageSize').onchange=e=>{state.pageSize=Number(e.target.value); state.page=1; refresh()}; q('resetBtn').onclick=()=>{resetFilterState(); q('keywordInput').value=''; q('tableSearch').value=''; refresh()}; q('prevBtn').onclick=()=>{if(state.page>1){state.page--; refresh()}}; q('nextBtn').onclick=()=>{state.page++; refresh()}; refresh()}
 async function loadRemoteData(){
   try{
     const res=await fetch('data.xlsx',{cache:'no-store'});
@@ -233,17 +228,15 @@ async function loadRemoteData(){
     return true;
   }catch(e){console.warn('Không nạp được data.xlsx, dùng dữ liệu mặc định:',e); return false;}
 }
-async function loadDetailLink(){
-  try{
-    const res=await fetch('link.txt',{cache:'no-store'});
-    if(!res.ok) return;
-    const url=(await res.text()).trim();
-    if(!url||url.startsWith('#')) return;
-    const a=q('detailLink');
-    if(a) a.href=url;
-  }catch(e){console.warn('Không nạp được link.txt, dùng link mặc định:',e);}
+async function loadSettings(){
+  let cfg={};
+  try{ const r=await fetch('config.json',{cache:'no-store'}); if(r.ok) cfg=await r.json(); }catch(e){console.warn('Không nạp được config.json:',e);}
+  if(!cfg.detailLinkUrl){ try{ const r=await fetch('link.txt',{cache:'no-store'}); if(r.ok){ const u=(await r.text()).trim(); if(u&&!u.startsWith('#')) cfg.detailLinkUrl=u; } }catch(e){} }
+  if(cfg.title){ document.title=cfg.title; const h=q('dashTitle'); if(h) h.textContent=cfg.title; }
+  const a=q('detailLink');
+  if(a){ if(cfg.detailLinkUrl) a.href=cfg.detailLinkUrl; if(cfg.detailLinkText) a.textContent=cfg.detailLinkText; }
 }
-loadDetailLink();
+loadSettings();
 loadRemoteData().then(()=>init());
 </script>
 </body>
