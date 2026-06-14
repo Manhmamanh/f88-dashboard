@@ -233,6 +233,17 @@ async function loadRemoteData(){
     return true;
   }catch(e){console.warn('Không nạp được data.xlsx, dùng dữ liệu mặc định:',e); return false;}
 }
+async function loadDetailLink(){
+  try{
+    const res=await fetch('link.txt',{cache:'no-store'});
+    if(!res.ok) return;
+    const url=(await res.text()).trim();
+    if(!url||url.startsWith('#')) return;
+    const a=q('detailLink');
+    if(a) a.href=url;
+  }catch(e){console.warn('Không nạp được link.txt, dùng link mặc định:',e);}
+}
+loadDetailLink();
 loadRemoteData().then(()=>init());
 </script>
 </body>
