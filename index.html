@@ -178,7 +178,7 @@ table.no-photo-table{min-width:680px}
       </div>
       <div class="controls">
         <input id="tableSearch" class="search-input" style="min-width:260px" placeholder="Tìm trong bảng đầy đủ..." />
-        <select id="pageSize"><option>15</option><option>25</option><option>50</option><option selected>100</option></select>
+        <select id="pageSize"><option selected>20</option><option>50</option><option>100</option></select>
       </div>
     </div>
     <div class="table-wrap">
@@ -196,7 +196,7 @@ let payload = JSON.parse(JSON.stringify(defaultPayload));
 let rawData = payload.records || [];
 const multiFilterFields = new Set(['Kết quả tuân thủ nhận diện tại PGD']);
 const emptyFilterValue = field=>multiFilterFields.has(field)?[]:'';
-const state = {filters:Object.fromEntries(payload.filterFields.map(f=>[f,emptyFilterValue(f)])), keyword:'', tableSearch:'', page:1, pageSize:100, rankGroup:'PHÂN VÙNG', matrixGroup:'PHÂN VÙNG'};
+const state = {filters:Object.fromEntries(payload.filterFields.map(f=>[f,emptyFilterValue(f)])), keyword:'', tableSearch:'', page:1, pageSize:20, rankGroup:'PHÂN VÙNG', matrixGroup:'PHÂN VÙNG'};
 const urlFilterParams = {region:'PHÂN VÙNG'};
 const theme = {paper:'rgba(0,0,0,0)', bg:'rgba(0,0,0,0)', text:'#122033', grid:'#e5eaf1'};
 const fullTableColumns = ['Người chấm','PGD','MIỀN','TỈNH','PHÂN VÙNG','QLKV','QLV','F88/CIMB','DIỄN TẢ LỖI CHI TIẾT','Số lỗi của PGD','score10Recognition','Kết quả tuân thủ nhận diện tại PGD','Số lỗi 5S ','score10FiveS','compositeScore10','Kết quả tuân thủ 5S tại PGD',...payload.issueColumns,'allIssuesText'];
