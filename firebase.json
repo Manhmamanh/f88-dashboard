@@ -1,0 +1,8 @@
+{
+  "database": [
+    {
+      "instance": "f88-dashboard-analytics",
+      "rules": "database.analytics.rules.json"
+    }
+  ]
+}

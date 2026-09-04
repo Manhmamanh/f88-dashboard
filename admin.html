@@ -9,7 +9,7 @@
 :root{--green:#00844A;--line:#e5eaf1;--muted:#64748b;--bg:#f4f7fb;}
 *{box-sizing:border-box}
 body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:#122033;line-height:1.5}
-.wrap{max-width:780px;margin:0 auto;padding:24px 18px 60px}
+.wrap{max-width:1080px;margin:0 auto;padding:24px 18px 60px}
 .brand{display:flex;align-items:center;gap:10px;margin-bottom:6px}
 .brand img{height:34px}
 .brand .tag{font-size:13px;font-weight:700;color:var(--green);border-left:2px solid var(--green);padding-left:9px;line-height:1.25}
@@ -45,6 +45,7 @@ input:focus{outline:none;border-color:var(--green)}
 code{background:#f1f5f9;padding:1px 5px;border-radius:5px;font-size:12px}
 .disabled-overlay{opacity:.45;pointer-events:none}
 hr{border:none;border-top:1px solid var(--line);margin:18px 0}
+.card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap}.traffic-controls{display:flex;align-items:center;gap:8px}.traffic-controls select{padding:8px 10px;border:1px solid var(--line);border-radius:9px;background:#fff;color:#334155}.traffic-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:14px 0 18px}.traffic-kpi{padding:13px 14px;background:#f8fafc;border-right:1px solid var(--line)}.traffic-kpi:last-child{border-right:0}.traffic-kpi span{display:block;color:var(--muted);font-size:12px}.traffic-kpi strong{display:block;font-size:24px;margin-top:3px;color:#0f5132}.traffic-chart{height:190px;display:flex;align-items:flex-end;gap:3px;padding:12px 8px 28px;border:1px solid var(--line);border-radius:10px;background:#fbfcfe;overflow:hidden}.traffic-bar-group{height:100%;flex:1;min-width:3px;display:flex;align-items:flex-end;gap:1px;position:relative}.traffic-bar{flex:1;min-height:2px;border-radius:2px 2px 0 0}.traffic-bar.views{background:#00844a}.traffic-bar.visits{background:#f59e0b}.traffic-bar-label{position:absolute;left:50%;bottom:-22px;transform:translateX(-50%);font-size:9px;color:#64748b;white-space:nowrap}.traffic-legend{display:flex;gap:16px;align-items:center;margin:9px 0 14px;font-size:12px;color:#475569}.traffic-legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px}.traffic-table-wrap{max-height:310px;overflow:auto;border:1px solid var(--line);border-radius:10px}.traffic-table{width:100%;border-collapse:collapse}.traffic-table th,.traffic-table td{padding:9px 11px;border-bottom:1px solid var(--line);text-align:left;font-size:13px}.traffic-table th{position:sticky;top:0;background:#f8fafc;color:#475569}.traffic-table td:nth-child(n+2),.traffic-table th:nth-child(n+2){text-align:right}.traffic-loading{padding:24px;text-align:center;color:var(--muted)}@media(max-width:720px){.traffic-kpis{grid-template-columns:1fr 1fr}.traffic-kpi:nth-child(2){border-right:0}.traffic-kpi:nth-child(-n+2){border-bottom:1px solid var(--line)}.traffic-chart{height:160px}}
 </style>
 </head>
 <body>
@@ -55,6 +56,35 @@ hr{border:none;border-top:1px solid var(--line);margin:18px 0}
   </div>
   <h1>Trang quản trị Dashboard</h1>
   <p class="sub">Cập nhật dữ liệu, link và tiêu đề — bấm Lưu là tự đăng lên hệ thống, dashboard cập nhật sau ~1 phút. · <a href="index.html" target="_blank">Mở dashboard ↗</a></p>
+
+  <!-- TRAFFIC -->
+  <div class="card" id="trafficCard">
+    <div class="card-head">
+      <div>
+        <h2>Thống kê truy cập Dashboard</h2>
+        <p class="desc">Lịch sử được ghi từ thời điểm kích hoạt, không lưu thông tin cá nhân.</p>
+      </div>
+      <div class="traffic-controls">
+        <select id="trafficRange" aria-label="Khoảng thời gian thống kê"><option value="7">7 ngày</option><option value="30" selected>30 ngày</option><option value="90">90 ngày</option></select>
+        <button class="btn btn-secondary" id="refreshTraffic" type="button" title="Tải lại thống kê">↻ Làm mới</button>
+      </div>
+    </div>
+    <div class="traffic-kpis">
+      <div class="traffic-kpi"><span>Tổng lượt mở</span><strong id="trafficTotal">—</strong></div>
+      <div class="traffic-kpi"><span>Lượt mở hôm nay</span><strong id="trafficToday">—</strong></div>
+      <div class="traffic-kpi"><span>Khách 7 ngày</span><strong id="traffic7">—</strong></div>
+      <div class="traffic-kpi"><span>Khách 30 ngày</span><strong id="traffic30">—</strong></div>
+    </div>
+    <div id="trafficChart" class="traffic-chart"><div class="traffic-loading">Đang tải thống kê...</div></div>
+    <div class="traffic-legend"><span><i style="background:#00844a"></i>Lượt mở trang</span><span><i style="background:#f59e0b"></i>Khách/ngày</span></div>
+    <div class="traffic-table-wrap">
+      <table class="traffic-table">
+        <thead><tr><th>Ngày</th><th>Lượt mở trang</th><th>Khách/ngày</th></tr></thead>
+        <tbody id="trafficTable"><tr><td colspan="3" class="traffic-loading">Đang tải...</td></tr></tbody>
+      </table>
+    </div>
+    <div class="msg" id="trafficMsg"></div>
+  </div>
 
   <!-- TOKEN -->
   <div class="card">
@@ -109,8 +139,10 @@ hr{border:none;border-top:1px solid var(--line);margin:18px 0}
 <script>
 const OWNER='Manhmamanh', REPO='f88-dashboard', BRANCH='main';
 const API=`https://api.github.com/repos/${OWNER}/${REPO}/contents/`;
+const ANALYTICS_URL='https://f88-dashboard-analytics.asia-southeast1.firebasedatabase.app/apps/f88-dashboard/analytics/daily.json';
 const $=id=>document.getElementById(id);
 let pendingData=null; // {base64, name, rows}
+let trafficData={};
 
 function getToken(){ return localStorage.getItem('f88_gh_token')||''; }
 function ghHeaders(){ return {'Authorization':'token '+getToken(),'Accept':'application/vnd.github+json'}; }
@@ -119,6 +151,12 @@ function hideMsg(el){ el.className='msg'; }
 function utf8ToB64(s){ return btoa(unescape(encodeURIComponent(s))); }
 function b64ToUtf8(s){ return decodeURIComponent(escape(atob(s))); }
 function bytesToB64(bytes){ let bin=''; const c=0x8000; for(let i=0;i<bytes.length;i+=c){ bin+=String.fromCharCode.apply(null,bytes.subarray(i,i+c)); } return btoa(bin); }
+function analyticsDay(offset=0){const d=new Date();d.setDate(d.getDate()+offset);return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).format(d);}
+function trafficNumber(n){return Number(n||0).toLocaleString('vi-VN');}
+function trafficSum(days,field){return days.reduce((sum,d)=>sum+Number((trafficData[d]||{})[field]||0),0);}
+function trafficSeries(range){const rows=[];for(let i=range-1;i>=0;i--){const day=analyticsDay(-i),value=trafficData[day]||{};rows.push({day,pageviews:Number(value.pageviews||0),visits:Number(value.visits||0)});}return rows;}
+function renderTraffic(){const allDays=Object.keys(trafficData).filter(x=>/^\d{4}-\d{2}-\d{2}$/.test(x)).sort();const days7=trafficSeries(7).map(x=>x.day),days30=trafficSeries(30).map(x=>x.day),today=trafficData[analyticsDay()]||{};$('trafficTotal').textContent=trafficNumber(trafficSum(allDays,'pageviews'));$('trafficToday').textContent=trafficNumber(today.pageviews);$('traffic7').textContent=trafficNumber(trafficSum(days7,'visits'));$('traffic30').textContent=trafficNumber(trafficSum(days30,'visits'));const range=Number($('trafficRange').value),series=trafficSeries(range),max=Math.max(1,...series.flatMap(x=>[x.pageviews,x.visits]));$('trafficChart').innerHTML=series.map((x,i)=>{const label=(range===7||i===0||i===series.length-1||i%5===0)?x.day.slice(5).replace('-','/'):'';return `<div class="traffic-bar-group" title="${x.day}: ${trafficNumber(x.pageviews)} lượt mở, ${trafficNumber(x.visits)} khách"><div class="traffic-bar views" style="height:${Math.max(x.pageviews?3:0,x.pageviews/max*100)}%"></div><div class="traffic-bar visits" style="height:${Math.max(x.visits?3:0,x.visits/max*100)}%"></div>${label?`<span class="traffic-bar-label">${label}</span>`:''}</div>`;}).join('');$('trafficTable').innerHTML=series.slice().reverse().map(x=>`<tr><td>${x.day.split('-').reverse().join('/')}</td><td>${trafficNumber(x.pageviews)}</td><td>${trafficNumber(x.visits)}</td></tr>`).join('');}
+async function loadTraffic(){hideMsg($('trafficMsg'));$('refreshTraffic').disabled=true;try{const r=await fetch(ANALYTICS_URL+'?t='+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error('Không đọc được database ('+r.status+')');trafficData=await r.json()||{};renderTraffic();}catch(e){showMsg($('trafficMsg'),'err',e.message);$('trafficChart').innerHTML='<div class="traffic-loading">Chưa tải được thống kê.</div>';$('trafficTable').innerHTML='<tr><td colspan="3" class="traffic-loading">Chưa có dữ liệu.</td></tr>';}finally{$('refreshTraffic').disabled=false;}}
 
 async function ghGet(path){
   const r=await fetch(API+path+'?ref='+BRANCH+'&t='+Date.now(),{headers:ghHeaders()});
@@ -225,6 +263,8 @@ $('connectBtn').onclick=connect;
 $('forgetBtn').onclick=forget;
 $('saveSettings').onclick=saveSettings;
 $('publishData').onclick=publishData;
+$('refreshTraffic').onclick=loadTraffic;
+$('trafficRange').onchange=renderTraffic;
 $('filebox').onclick=()=>$('excel').click();
 $('excel').onchange=e=>onExcel(e.target.files[0]);
 $('filebox').ondragover=e=>{e.preventDefault();$('filebox').style.borderColor='#00844A';};
@@ -232,6 +272,7 @@ $('filebox').ondragleave=()=>{$('filebox').style.borderColor='';};
 $('filebox').ondrop=e=>{e.preventDefault();$('filebox').style.borderColor='';onExcel(e.dataTransfer.files[0]);};
 
 // auto-connect nếu đã lưu token
+loadTraffic();
 if(getToken()){ connect(); } else { setConnected(false); }
 </script>
 </body>

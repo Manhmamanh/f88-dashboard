@@ -299,7 +299,12 @@ async function loadSettings(){
   const lbl=q('detailLinkLabel');
   if(lbl&&cfg.detailLinkText) lbl.textContent=cfg.detailLinkText;
 }
+const analyticsBase='https://f88-dashboard-analytics.asia-southeast1.firebasedatabase.app/apps/f88-dashboard/analytics';
+function analyticsDay(){return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());}
+async function incrementAnalytics(metric){const url=`${analyticsBase}/daily/${analyticsDay()}/${metric}.json`; for(let attempt=0;attempt<4;attempt++){const current=await fetch(url,{headers:{'X-Firebase-ETag':'true'},cache:'no-store'}); if(!current.ok) throw new Error(`Analytics read ${current.status}`); const etag=current.headers.get('ETag'); const value=Number(await current.json())||0; const saved=await fetch(url,{method:'PUT',headers:{'Content-Type':'application/json','If-Match':etag},body:JSON.stringify(value+1)}); if(saved.ok) return; if(saved.status!==412) throw new Error(`Analytics write ${saved.status}`);} throw new Error('Analytics transaction conflict');}
+async function trackDashboardVisit(){const day=analyticsDay(), key=`f88-dashboard-visit-${day}`; let firstVisit=true; try{firstVisit=localStorage.getItem(key)!=='1';}catch(e){} const tasks=[incrementAnalytics('pageviews')]; if(firstVisit) tasks.push(incrementAnalytics('visits').then(()=>{try{localStorage.setItem(key,'1');}catch(e){}})); const results=await Promise.allSettled(tasks); results.filter(x=>x.status==='rejected').forEach(x=>console.warn('Không ghi được thống kê truy cập:',x.reason));}
 loadSettings();
+trackDashboardVisit();
 loadRemoteData().then(()=>init());
 </script>
 </body>

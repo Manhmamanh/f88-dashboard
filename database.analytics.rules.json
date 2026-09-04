@@ -1,0 +1,21 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "apps": {
+      "f88-dashboard": {
+        "analytics": {
+          ".read": true,
+          "daily": {
+            "$day": {
+              "$metric": {
+                ".write": "($metric === 'pageviews' || $metric === 'visits') && newData.isNumber() && newData.val() == (data.exists() ? data.val() + 1 : 1) && newData.val() <= 1000000000",
+                ".validate": "newData.isNumber()"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
